@@ -17,6 +17,7 @@
 import re
 import subprocess
 import hashlib
+import random
 import lockfile
 
 class HostPool(object):
@@ -45,7 +46,7 @@ class HostPool(object):
 
 class Encoder(object):
     script = '''
-ffmpeg -i %(src)s -f rawvideo - | ssh %(host)s "cat - > input.yuv && /usr/local/webm/bin/vpxenc input.yuv -o output.webm --i420 -w %(width)d -h %(height)d -p 2  -t 4  --best --target-bitrate=%(bitrate)d --end-usage=vbr --auto-alt-ref=1 --fps=30000/1001 -v --minsection-pct=5 --maxsection-pct=800 --lag-in-frames=16 --kf-min-dist=0 --kf-max-dist=360 --token-parts=2 --static-thresh=0 --drop-frame=0 --min-q=0 --max-q=60 && cat output.webm && rm -f input.yuv output.webm" > video.webm && ffmpeg -i video.webm -i %(src)s -vcodec copy -y %(dest)s
+ffmpeg -i %(src)s -f rawvideo - | ssh %(host)s "cat - > input.yuv && /usr/local/webm/bin/vpxenc input.yuv -o output.webm --i420 -w %(width)d -h %(height)d -p 2  -t 4  --best --target-bitrate=%(bitrate)d --end-usage=vbr --auto-alt-ref=1 --fps=30000/1001 -v --minsection-pct=5 --maxsection-pct=800 --lag-in-frames=16 --kf-min-dist=0 --kf-max-dist=360 --token-parts=2 --static-thresh=0 --drop-frame=0 --min-q=0 --max-q=60 && cat output.webm && rm -f input.yuv output.webm" > interm.%(cookie)s.webm && ffmpeg -i interm.%(cookie)s.webm -i %(src)s -vcodec copy -y %(dest)s
 '''
 
     def __init__(self, src, bitrate, width, height, host):
@@ -55,6 +56,7 @@ ffmpeg -i %(src)s -f rawvideo - | ssh %(host)s "cat - > input.yuv && /usr/local/
         self.height = height
         self.dest = re.sub(u'(mp4|f4v|m4v)$', u'webm', self.src)
         self.host = host
+        self.cookie = hashlib.md5(str(random.getrandbits(256))).hexdigest()
 
     def encode(self):
         print self.script % self.__dict__
