@@ -46,7 +46,7 @@ class HostPool(object):
 
 class Encoder(object):
     script = '''
-ffmpeg -i %(src)s -f rawvideo -vf "scale=%(width)d:%(height)d" - | ssh -C %(host)s "cat - > input.yuv && /usr/local/webm/bin/vpxenc input.yuv -o output.webm --i420 -w %(width)d -h %(height)d -p 2  -t 4  --good --cpu-used=0 --target-bitrate=%(bitrate)d --end-usage=vbr --auto-alt-ref=1 --fps=30000/1001 -v --minsection-pct=5 --maxsection-pct=800 --lag-in-frames=16 --kf-min-dist=0 --kf-max-dist=360 --token-parts=2 --static-thresh=0 --drop-frame=0 --min-q=0 --max-q=60 && cat output.webm && rm -f input.yuv output.webm" > interm.%(cookie)s.webm && ffmpeg -i interm.%(cookie)s.webm -i %(src)s -vcodec copy -y %(dest)s && rm -f interm.%(cookie)s.webm
+ffmpeg -i %(src)s -f yuv4mpegpipe -pix_fmt yuv420p -vf "scale=%(width)d:%(height)d" - | ssh -C %(host)s "cat - > input.mpg && /usr/local/webm/bin/vpxenc input.mpg -o output.webm -p 2  -t 4  --good --cpu-used=0 --target-bitrate=%(bitrate)d --end-usage=vbr --auto-alt-ref=1 --fps=30000/1001 -v --minsection-pct=5 --maxsection-pct=800 --lag-in-frames=16 --kf-min-dist=0 --kf-max-dist=360 --token-parts=2 --static-thresh=0 --drop-frame=0 --min-q=0 --max-q=60 && cat output.webm && rm -f input.mpg output.webm" > interm.%(cookie)s.webm && ffmpeg -i interm.%(cookie)s.webm -i %(src)s -vcodec copy -acodec libvorbis -aq 4 -map 0:v -map 1:a -y %(dest)s && rm -f interm.%(cookie)s.webm
 '''
 
     def __init__(self, src, bitrate, width, height, host):
