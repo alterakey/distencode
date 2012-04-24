@@ -65,12 +65,16 @@ ffmpeg -i %(src)s -f yuv4mpegpipe -pix_fmt yuv420p -vf "scale=%(width)d:%(height
 
 class H264Encoder(object):
     script = '''
-ffmpeg -i %(src)s -f yuv4mpegpipe -pix_fmt yuv420p -vf "scale=%(width)d:%(height)d" - | ssh -C %(host)s "cat - > input.mpg && ffmpeg -i input.mpg -pass 1 -vcodec libx264 -vpre hq -profile main -y output.mp4 && ffmpeg -i input.mpg -pass 2 -vcodec libx264 -vpre hq -profile main -y output.mp4 && cat output.mp4 && rm -f input.mpg output.mp4" > interm.%(cookie)s.mp4 && ffmpeg -i interm.%(cookie)s.mp4 -i %(src)s -vcodec copy -acodec libfaac -ab 128 -map 0:v -map 1:a -y %(dest)s && rm -f interm.%(cookie)s.mp4
+ffmpeg -i "%(src)s" -vf "scale=%(width)d:%(height)d" -vcodec ffvhuff -pix_fmt yuv420p -acodec libfaac -b:a 128000 -f matroska /dev/stdout | ssh %(host)s 'cat - > "interm.%(cookie)s.mkv" && ffmpeg -i "interm.%(cookie)s.mkv" -vf "scale=%(width)d:%(height)d" -vcodec libx264 -pass 1 -vpre hq -profile:v main -b:v %(bitrate)s -an -y "%(dest)s" && ffmpeg -i "interm.%(cookie)s.mkv" -vf "scale=%(width)d:%(height)d" -vcodec libx264 -pass 2 -vpre hq -profile:v main -b:v %(bitrate)s -acodec copy -y "%(dest)s" && cat "%(dest)s" && rm -f "interm.%(cookie)s.mkv" "%(dest)s"' > "%(dest)s"
+'''
+
+    script_localhost = '''
+ffmpeg -i "%(src)s" -vf "scale=%(width)d:%(height)d" -vcodec ffvhuff -pix_fmt yuv420p -acodec libfaac -b:a 128000 -y interm.%(cookie)s.mkv && ffmpeg -i interm.%(cookie)s.mkv -vcodec libx264 -pass 1 -vpre hq -profile:v main -b:v %(bitrate)s -an -y "%(dest)s" && ffmpeg -i interm.%(cookie)s.mkv -vcodec libx264 -pass 2 -vpre hq -profile:v main -b:v %(bitrate)s -acodec copy -y "%(dest)s" && rm -f interm.%(cookie)s.mkv
 '''
 
     def __init__(self, src, dest, bitrate, width, height, host):
         self.src = src
-        self.bitrate = bitrate
+        self.bitrate = bitrate * 1000
         self.width = width
         self.height = height
         self.dest = dest
@@ -78,9 +82,16 @@ ffmpeg -i %(src)s -f yuv4mpegpipe -pix_fmt yuv420p -vf "scale=%(width)d:%(height
         self.cookie = hashlib.md5(str(random.getrandbits(256))).hexdigest()
 
     def encode(self):
-        print self.script % self.__dict__
+        script = self.get_script()
+        print script % self.__dict__
         with open('%s.log' % self.dest, 'w') as f:
-            subprocess.check_call(self.script % self.__dict__, shell=True, stderr=f)
+            subprocess.check_call(script % self.__dict__, shell=True, stderr=f)
+
+    def get_script(self):
+        if self.host == 'localhost':
+            return self.script_localhost
+        else:
+            return self.script
 
 if __name__ == '__main__':
     import sys
