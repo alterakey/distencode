@@ -63,6 +63,25 @@ ffmpeg -i %(src)s -f yuv4mpegpipe -pix_fmt yuv420p -vf "scale=%(width)d:%(height
         with open('%s.log' % self.dest, 'w') as f:
             subprocess.check_call(self.script % self.__dict__, shell=True, stderr=f)
 
+class H264Encoder(object):
+    script = '''
+ffmpeg -i %(src)s -f yuv4mpegpipe -pix_fmt yuv420p -vf "scale=%(width)d:%(height)d" - | ssh -C %(host)s "cat - > input.mpg && ffmpeg -i input.mpg -pass 1 -vcodec libx264 -vpre hq -profile main -y output.mp4 && ffmpeg -i input.mpg -pass 2 -vcodec libx264 -vpre hq -profile main -y output.mp4 && cat output.mp4 && rm -f input.mpg output.mp4" > interm.%(cookie)s.mp4 && ffmpeg -i interm.%(cookie)s.mp4 -i %(src)s -vcodec copy -acodec libfaac -ab 128 -map 0:v -map 1:a -y %(dest)s && rm -f interm.%(cookie)s.mp4
+'''
+
+    def __init__(self, src, dest, bitrate, width, height, host):
+        self.src = src
+        self.bitrate = bitrate
+        self.width = width
+        self.height = height
+        self.dest = dest
+        self.host = host
+        self.cookie = hashlib.md5(str(random.getrandbits(256))).hexdigest()
+
+    def encode(self):
+        print self.script % self.__dict__
+        with open('%s.log' % self.dest, 'w') as f:
+            subprocess.check_call(self.script % self.__dict__, shell=True, stderr=f)
+
 if __name__ == '__main__':
     import sys
     import os
