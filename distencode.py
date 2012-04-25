@@ -71,6 +71,10 @@ class WebMEncoder(Encoder):
 ffmpeg -i %(src)s -f yuv4mpegpipe -pix_fmt yuv420p -vf "scale=%(width)d:%(height)d" - | ssh -C %(host)s "cat - > input.mpg && /usr/local/webm/bin/vpxenc input.mpg -o output.webm -p 2  -t 4  --good --cpu-used=0 --target-bitrate=%(bitrate)d --end-usage=vbr --auto-alt-ref=1 --fps=30000/1001 -v --minsection-pct=5 --maxsection-pct=800 --lag-in-frames=16 --kf-min-dist=0 --kf-max-dist=360 --token-parts=2 --static-thresh=0 --drop-frame=0 --min-q=0 --max-q=60 && cat output.webm && rm -f input.mpg output.webm" > interm.%(cookie)s.webm && ffmpeg -i interm.%(cookie)s.webm -i %(src)s -vcodec copy -acodec libvorbis -aq 4 -map 0:v -map 1:a -y %(dest)s && rm -f interm.%(cookie)s.webm
 '''
 
+    script_localhost = '''
+ffmpeg -i "%(src)s" -vf "scale=%(width)d:%(height)d" -f rawvideo -pix_fmt yuv420p interm.%(cookie)s.yuv && vpxenc interm.%(cookie)s.yuv -o interm.%(cookie)s.webm -p 2 -t 4 --good --cpu-used=0 --target-bitrate=%(bitrate)d --end-usage=vbr --auto-alt-ref=1 --i420 --width=%(width)d --height=%(height)d --fps=30000/1001 -v --minsection-pct=5 --maxsection-pct=800 --lag-in-frames=16 --kf-min-dist=0 --kf-max-dist=360 --token-parts=2 --static-thresh=0 --drop-frame=0 --min-q=0 --max-q=60 && ffmpeg -i interm.%(cookie)s.webm -i %(src)s -vcodec copy -acodec libvorbis -aq 4 -map 0:v -map 1:a -y %(dest)s && rm -f interm.%(cookie)s.*
+'''
+
 class H264Encoder(Encoder):
     script = '''
 ffmpeg -i "%(src)s" -vf "scale=%(width)d:%(height)d" -vcodec ffvhuff -pix_fmt yuv420p -acodec libfaac -b:a 128000 -f matroska /dev/stdout | ssh %(host)s 'cat - > "interm.%(cookie)s.mkv" && ffmpeg -i "interm.%(cookie)s.mkv" -vf "scale=%(width)d:%(height)d" -vcodec libx264 -pass 1 -vpre hq -profile:v main -b:v %(bitrate)s -an -y "%(dest)s" && ffmpeg -i "interm.%(cookie)s.mkv" -vf "scale=%(width)d:%(height)d" -vcodec libx264 -pass 2 -vpre hq -profile:v main -b:v %(bitrate)s -acodec copy -y "%(dest)s" && cat "%(dest)s" && rm -f "interm.%(cookie)s.mkv" "%(dest)s"' > "%(dest)s"
