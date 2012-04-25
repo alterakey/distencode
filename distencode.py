@@ -95,7 +95,9 @@ if __name__ == '__main__':
     host = None
     try:
         host = pool.acquire()
-        WebMEncoder(src=sys.argv[1], dest=sys.argv[2], bitrate=int(sys.argv[3]), width=int(sys.argv[4]), height=int(sys.argv[5]), host=host).encode()
+        format = sys.argv[1]
+        encoder = {'h264':H264Encoder, 'webm':WebMEncoder}
+        encoder(src=sys.argv[2], dest=sys.argv[3], bitrate=int(sys.argv[4]), width=int(sys.argv[5]), height=int(sys.argv[6]), host=host).encode()
     finally:
         if host is not None:
             pool.release(host)
