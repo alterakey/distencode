@@ -77,7 +77,7 @@ ffmpeg -i "%(src)s" -vf "scale=%(width)d:%(height)d" -f rawvideo -pix_fmt yuv420
 
 class H264Encoder(Encoder):
     script = '''
-ffmpeg -i "%(src)s" -vf "scale=%(width)d:%(height)d" -vcodec ffvhuff -pix_fmt yuv420p -acodec libfaac -b:a 128000 -f matroska /dev/stdout | ssh %(host)s 'cat - > "interm.%(cookie)s.mkv" && ffmpeg -i "interm.%(cookie)s.mkv" -vf "scale=%(width)d:%(height)d" -vcodec libx264 -pass 1 -vpre hq -profile:v main -b:v %(bitrate)s -an -y "%(dest)s" && ffmpeg -i "interm.%(cookie)s.mkv" -vf "scale=%(width)d:%(height)d" -vcodec libx264 -pass 2 -vpre hq -profile:v main -b:v %(bitrate)s -acodec copy -y "%(dest)s" && cat "%(dest)s" && rm -f "interm.%(cookie)s.mkv" "%(dest)s"' > "%(dest)s"
+ffmpeg -i "%(src)s" -vf "scale=%(width)d:%(height)d" -vcodec ffvhuff -pix_fmt yuv420p -acodec libfaac -b:a 128000 -f matroska /dev/stdout | ssh %(host)s 'cat - > "interm.%(cookie)s.mkv" && ffmpeg -i "interm.%(cookie)s.mkv" -vcodec libx264 -pass 1 -vpre hq -profile:v main -b:v %(bitrate)s -an -y "%(dest)s" && ffmpeg -i "interm.%(cookie)s.mkv" -vcodec libx264 -pass 2 -vpre hq -profile:v main -b:v %(bitrate)s -acodec copy -y "%(dest)s" && cat "%(dest)s" && rm -f "interm.%(cookie)s*" "%(dest)s"' > "%(dest)s"
 '''
 
     script_localhost = '''
