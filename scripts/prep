@@ -1,0 +1,11 @@
+#!/bin/sh
+src=$1
+width=$2
+height=$3
+
+if test -z "$height"; then
+    echo "usage: $0 in width height"
+    exit 127
+fi
+
+ffmpeg -i "${src}" -vf "scale=${width}:${height}" -vcodec ffvhuff -pix_fmt yuv420p -acodec copy -

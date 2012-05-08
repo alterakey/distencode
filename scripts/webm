@@ -1,0 +1,25 @@
+#!/bin/sh -e
+cookie="$1"
+in="$2"
+bitrate="$3"
+width="$4"
+height="$5"
+
+interm="interm.${cookie}"
+stage1="$in"
+
+if test -z "$height"; then
+    echo "usage: $0 cookie in bitrate width height"
+    exit 127
+fi
+
+if "$stage1" == "-"; then
+    stage1="${interm}.stage1.mkv"
+    cat - > $stage1
+fi
+
+ffmpeg -i ${stage1} -f rawvideo -pix_fmt yuv420p -y ${interm}.video.yuv >/dev/null
+vpxenc ${interm}.video.yuv -o ${interm}.video.webm -p 2 -t 4 --good --cpu-used=0 --target-bitrate=${bitrate} --end-usage=vbr --auto-alt-ref=1 --i420 --width=${width} --height=${height} --fps=30000/1001 -v --minsection-pct=5 --maxsection-pct=800 --lag-in-frames=16 --kf-min-dist=0 --kf-max-dist=360 --token-parts=2 --static-thresh=0 --drop-frame=0 --min-q=0 --max-q=60 >/dev/null
+ffmpeg -i ${interm}.video.webm -i ${stage1} -vcodec copy -acodec libvorbis -aq 4 -map 0:v -map 1:a -y ${interm}.out.webm >/dev/null
+cat ${interm}.out.webm
+rm -f ${interm}.* >/dev/null

@@ -1,0 +1,25 @@
+#!/bin/sh -e
+cookie="$1"
+in="$2"
+bitrate="$3"
+width="$4"
+height="$5"
+
+interm="interm.${cookie}"
+profile_prefix="`dirname $0`/presets"
+stage1="$in"
+
+if test -z "$height"; then
+    echo "usage: $0 cookie in bitrate width height"
+    exit 127
+fi
+
+if "$stage1" == "-"; then
+    stage1="${interm}.stage1.mkv"
+    cat - > $stage1
+fi
+
+ffmpeg -i ${stage1} -vcodec libx264 -pass 1 -vpre ${profile_presets}/libx264-hq.ffpreset -profile:v main -b:v %(bitrate)s -an -y ${interm}.out.mp4 >/dev/null
+ffmpeg -i ${stage1} -vcodec libx264 -pass 2 -vpre ${profile_presets}/libx264-hq.ffpreset -profile:v main -b:v %(bitrate)s -acodec copy -y ${interm}.out.mp4 >/dev/null
+cat ${interm}.out.mp4
+rm -f ${interm}.* >/dev/null
